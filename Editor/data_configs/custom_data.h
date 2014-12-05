@@ -19,20 +19,29 @@
 #ifndef CUSTOM_DATA_H
 #define CUSTOM_DATA_H
 
+#include "../file_formats/npc_filedata.h"
+#include "../data_configs/obj_npc.h"
 #include <QPixmap>
 #include <QBitmap>
+
+struct UserIMGs
+{
+    QPixmap image;
+    QPixmap mask;
+    unsigned long id;
+};
 
 struct UserBGOs
 {
     QPixmap image;
-    QBitmap mask;
+    QPixmap mask;
     unsigned long id;
 };
 
 struct UserBlocks
 {
     QPixmap image;
-    QBitmap mask;
+    QPixmap mask;
     unsigned long id;
 };
 
@@ -40,7 +49,7 @@ struct UserNPCs
 {
     bool withImg;
     QPixmap image;
-    QBitmap mask;
+    QPixmap mask;
     unsigned long id;
 
     bool withTxt;
@@ -55,6 +64,32 @@ struct UserBGs
     unsigned long id;
     unsigned int q;//0 - only first; 1 - only second; 2 - fitst and seconf
 };
+
+
+///
+/// \brief The CustomDirManager class This is a capturer of custom files from level/world custom directories
+///
+class CustomDirManager
+{
+public:
+    CustomDirManager();
+    CustomDirManager(QString path, QString name);
+    ///
+    /// \brief getCustomFile Get custom file path if exist.
+    /// \param name Target file name which need to found
+    /// \return empty string if not exist
+    ///
+    QString getCustomFile(QString name);
+    void setCustomDirs(QString path, QString name);
+    void createDirIfNotExsist();
+    void import(QStringList &files, bool local = true);
+
+private:
+    QString dirEpisode;
+    QString dirCustom;
+
+};
+
 
 
 #endif // CUSTOM_DATA_H

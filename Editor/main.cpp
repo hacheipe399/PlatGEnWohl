@@ -16,66 +16,123 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QtWidgets>
 #include "mainwindow.h"
-#include <QDebug>
 
 #include <QSharedMemory>
 #include <QSystemSemaphore>
+#include <QDesktopWidget>
+
 
 #include "common_features/logger.h"
+#include "common_features/proxystyle.h"
 
-//Regular expressions for File Formats
+#include "SingleApplication/singleapplication.h"
+
+#include <iostream>
+#include <stdlib.h>
+
+#include "common_features/app_path.h"
+#include "common_features/themes.h"
+#include "common_features/crashhandler.h"
+
+#undef main
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+#undef main
+
+#include <QFileInfo>
+#include <QDir>
+
+QString ApplicationPath;
+QString ApplicationPath_x;
 
 int main(int argc, char *argv[])
 {
-    QApplication::addLibraryPath(".");
-    QApplication a(argc, argv);
+    CrashHandler::initCrashHandlers();
 
-    LoadLogSettings();
+    QApplication::addLibraryPath( QFileInfo(argv[0]).dir().path() );
 
-    //Check if application is already running//////////////////
-    QSystemSemaphore sema("Platformer Game Engine by Wohlstand 457h6329c2h32h744i", 1);
-    bool isRunning;
+    QApplication *a = new QApplication(argc, argv);
 
-    if(sema.acquire())
+
+
+    SingleApplication *as = new SingleApplication(argc, argv);
+    if(!as->shouldContinue())
     {
-        QSharedMemory shmem("Platformer Game Engine by Wohlstand fyhj246h46y46836u");
-        shmem.attach();
-    }
-
-    QString sendToMem;
-    foreach(QString str, a.arguments())
-    {
-        sendToMem+= str + "|";
-    }
-
-    QSharedMemory shmem("Platformer Game Engine by Wohlstand fyhj246h46y46836u");
-    if (shmem.attach())
-    {
-        isRunning = true;
-    }
-    else
-    {
-        shmem.create(1);
-        isRunning = false;
-    }
-    sema.release();
-
-    if(isRunning)
-    {
-        WriteToLog(QtDebugMsg, "--> Application Already running, aborting <--");
+        std::cout << "Editor already runned!\n";
         return 0;
     }
 
+
+
+
+
+    ApplicationPath = QApplication::applicationDirPath();
+    ApplicationPath_x = QApplication::applicationDirPath();
+
+    #ifdef __APPLE__
+    //Application path relative bundle folder of application
+    QString osX_bundle = QApplication::applicationName()+".app/Contents/MacOS";
+    if(ApplicationPath.endsWith(osX_bundle, Qt::CaseInsensitive))
+        ApplicationPath.remove(ApplicationPath.length()-osX_bundle.length()-1, osX_bundle.length()+1);
+    #endif
+
+    /*
+    QString osX_bundle = QApplication::applicationName()+".app/Contents/MacOS";
+    QString test="/home/vasya/pge/"+osX_bundle;
+    qDebug() << test << " <- before";
+    if(test.endsWith(osX_bundle, Qt::CaseInsensitive))
+        test.remove(test.length()-osX_bundle.length()-1, osX_bundle.length()+1);
+    qDebug() << test << " <- after";
+    */
+
+    Themes::init();
+
+    SDL_Init(SDL_INIT_AUDIO);
+
+    a->setApplicationName("Editor - Platformer Game Engine by Wohlstand");
+
+    LoadLogSettings();
+
     // ////////////////////////////////////////////////////
+    a->setStyle(new PGE_ProxyStyle);
     WriteToLog(QtDebugMsg, "--> Application started <--");
 
-    MainWindow w;
-    w.setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, QSize(qApp->desktop()->width()-100, qApp->desktop()->height()-100), qApp->desktop()->availableGeometry()));
-    w.show();
+    int ret=0;
+    QRect screenSize;
 
-    w.openFilesByArgs(a.arguments());
+    MainWindow *w = new MainWindow;
+    if(!w->continueLoad)
+    {
+        delete w;
+        goto QuitFromEditor;
+    }
 
-    return a.exec();
+    screenSize = qApp->desktop()->availableGeometry(qApp->desktop()->primaryScreen());
+    w->setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter,
+                                       QSize(screenSize.width()-100,\
+                                             screenSize.height()-100), screenSize));
+
+    a->connect( a, SIGNAL(lastWindowClosed()), a, SLOT( quit() ) );
+    a->connect( w, SIGNAL( closeEditor()), a, SLOT( quit() ) );
+    a->connect( w, SIGNAL( closeEditor()), a, SLOT( closeAllWindows() ) );
+
+    w->showNormal();
+    w->activateWindow();
+    w->raise();
+
+    w->openFilesByArgs(a->arguments());
+
+    w->connect(as, SIGNAL(openFile(QString)), w, SLOT(OpenFile(QString)));
+
+    ret=a->exec();
+
+QuitFromEditor:
+    QApplication::quit();
+    QApplication::exit();
+    delete a;
+    delete as;
+
+    SDL_Quit();
+    return ret;
 }

@@ -16,8 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../ui_mainwindow.h"
+#include <ui_mainwindow.h>
 #include "../mainwindow.h"
+#include "../common_features/graphicsworkspace.h"
+#include "../common_features/themes.h"
 
 
 //Edit NPC
@@ -31,12 +33,14 @@ npcedit *MainWindow::createNPCChild()
     QMdiSubWindow * npcWindowP = ui->centralWidget->addSubWindow(npcWindow);
     npcWindowP->setAttribute(Qt::WA_DeleteOnClose);
 
+    npcWindowP->setWindowIcon(Themes::icon(Themes::npc_16));
 
     npcWindowP->setGeometry(
                 (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().width()/4),
                 (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().height()/4),
                  520,640);
 
+    ui->centralWidget->updateGeometry();
  /*   connect(child, SIGNAL(copyAvailable(bool)),
             cutAct, SLOT(setEnabled(bool)));
     connect(child, SIGNAL(copyAvailable(bool)),
@@ -52,19 +56,57 @@ npcedit *MainWindow::createNPCChild()
 leveledit *MainWindow::createLvlChild()
 {
     leveledit *child = new leveledit;
+    connect(child, SIGNAL(forceReload()), this, SLOT(on_actionReload_triggered()));
+
     QMdiSubWindow *levelWindow = new QMdiSubWindow;
 
     levelWindow->setWidget(child);
     levelWindow->setAttribute(Qt::WA_DeleteOnClose);
 
+    child->setAcceptDrops(true);
+
+    levelWindow->setAcceptDrops(true);
+
     QMdiSubWindow * levelWindowP = ui->centralWidget->addSubWindow(levelWindow);
+    levelWindowP->setAttribute(Qt::WA_DeleteOnClose);
+    levelWindowP->setAcceptDrops(true);
+
+    levelWindowP->setGeometry(
+                (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().width()/4),
+                (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().height()/4),
+                             800, 610);
+    levelWindowP->setWindowIcon(Themes::icon(Themes::level_16));
+    levelWindowP->updateGeometry();
+    levelWindowP->update();
+    ui->centralWidget->updateGeometry();
+
+    GraphicsWorkspace* gr = static_cast<GraphicsWorkspace *>(child->getGraphicsView());
+    connect(gr, SIGNAL(zoomValueChanged(QString)), zoom, SLOT(setText(QString)));
+
+
+    return child;
+}
+
+//Edit WORLD
+WorldEdit *MainWindow::createWldChild()
+{
+    WorldEdit *child = new WorldEdit;
+    QMdiSubWindow *worldWindow = new QMdiSubWindow;
+
+    worldWindow->setWidget(child);
+    worldWindow->setAttribute(Qt::WA_DeleteOnClose);
+
+    QMdiSubWindow * levelWindowP = ui->centralWidget->addSubWindow(worldWindow);
     levelWindowP->setAttribute(Qt::WA_DeleteOnClose);
 
     levelWindowP->setGeometry(
                 (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().width()/4),
                 (ui->centralWidget->subWindowList().size()*20)%(ui->centralWidget->size().height()/4),
                              800, 610);
-    levelWindowP->setWindowIcon(QIcon(QPixmap(":/lvl16.png")));
+    levelWindowP->setWindowIcon(Themes::icon(Themes::world_16));
+    levelWindowP->updateGeometry();
+    levelWindowP->update();
+    ui->centralWidget->updateGeometry();
 
     return child;
 }
@@ -81,6 +123,8 @@ int MainWindow::activeChildWindow()
             return 1;
         if(QString(activeSubWindow->widget()->metaObject()->className())=="npcedit")
             return 2;
+        if(QString(activeSubWindow->widget()->metaObject()->className())=="WorldEdit")
+            return 3;
     }
 
     return 0;
@@ -100,12 +144,21 @@ leveledit *MainWindow::activeLvlEditWin()
     return 0;
 }
 
+WorldEdit *MainWindow::activeWldEditWin()
+{
+    if (QMdiSubWindow *activeSubWindow = ui->centralWidget->activeSubWindow())
+        return qobject_cast<WorldEdit *>(activeSubWindow->widget());
+    return 0;
+}
 
-QMdiSubWindow *MainWindow::findMdiChild(const QString &fileName)
+
+
+QMdiSubWindow *MainWindow::findOpenedFileWin(const QString &fileName)
 {
     QString canonicalFilePath = QFileInfo(fileName).canonicalFilePath();
     leveledit *ChildWindow0;
     npcedit *ChildWindow2;
+    WorldEdit *ChildWindow3;
 
     foreach (QMdiSubWindow *window, ui->centralWidget->subWindowList())
     {
@@ -121,7 +174,12 @@ QMdiSubWindow *MainWindow::findMdiChild(const QString &fileName)
         if (ChildWindow2->currentFile() == canonicalFilePath)
             return window;
         }
-
+        else if(QString(window->widget()->metaObject()->className())=="WorldEdit")
+        {
+        ChildWindow3 = qobject_cast<WorldEdit *>(window->widget());
+        if (ChildWindow3->currentFile() == canonicalFilePath)
+            return window;
+        }
     }
     return 0;
 }
@@ -136,10 +194,28 @@ void MainWindow::setActiveSubWindow(QWidget *window)
 
 void MainWindow::SWCascade()
 {
+    if(GlobalSettings::MainWindowView!=QMdiArea::SubWindowView)
+        setSubView(); // Switch into SubWindow mode on call this menuitem
     ui->centralWidget->cascadeSubWindows();
 }
 
 void MainWindow::SWTile()
 {
+    if(GlobalSettings::MainWindowView!=QMdiArea::SubWindowView)
+        setSubView(); // Switch into SubWindow mode on call this menuitem
     ui->centralWidget->tileSubWindows();
+}
+
+void MainWindow::setSubView()
+{
+    GlobalSettings::MainWindowView = QMdiArea::SubWindowView;
+    ui->centralWidget->setViewMode(GlobalSettings::MainWindowView);
+    updateWindowMenu();
+}
+
+void MainWindow::setTabView()
+{
+    GlobalSettings::MainWindowView = QMdiArea::TabbedView;
+    ui->centralWidget->setViewMode(GlobalSettings::MainWindowView);
+    updateWindowMenu();
 }

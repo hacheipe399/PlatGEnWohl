@@ -20,6 +20,7 @@
 #define APPSETTINGS_H
 
 #include <QDialog>
+#include <QMdiArea>
 
 namespace Ui {
 class AppSettings;
@@ -41,15 +42,29 @@ public:
 
     bool    logEnabled;
     int     loglevel;
+
+    bool    midmouse_allowDupe;
+    bool    midmouse_allowPlace;
+    bool    midmouse_allowDragMode;
+
+    bool    placing_dont_show_props_box;
+
+    QMdiArea::ViewMode   MainWindowView;
+    QTabWidget::TabPosition LVLToolboxPos;
+    QTabWidget::TabPosition WLDToolboxPos;
+    QTabWidget::TabPosition TSTToolboxPos;
+
     QString logfile;
+    QString selectedTheme;
 
     void applySettings();
 
 
 private slots:
     void on_setLogFile_clicked();
-
     void on_buttonBox_accepted();
+
+    void on_AssociateFiles_clicked();
 
 private:
     Ui::AppSettings *ui;

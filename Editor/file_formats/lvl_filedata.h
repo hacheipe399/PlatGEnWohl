@@ -23,6 +23,8 @@
 #include <QString>
 #include <QStringList>
 
+#include "meta_filedata.h"
+
 //////////////////////Level file Data//////////////////////
 struct LevelSection
 {
@@ -52,6 +54,7 @@ struct PlayerPoint
     long y;
     long h;
     long w;
+    int direction;
 };
 
 struct LevelBlock
@@ -61,7 +64,7 @@ struct LevelBlock
     long h;
     long w;
     unsigned long id; //Block ID
-    unsigned long npc_id;
+    long npc_id;
     bool invisible;
     bool slippery;
     QString layer;
@@ -76,15 +79,30 @@ struct LevelBlock
 
 struct LevelBGO
 {
+    //SMBX64
     long x;
     long y;
     unsigned long id; //Block ID
     QString layer;
 
+    //Extended
+    enum zmodes{
+        Background2=-2,
+        Background1=-1,
+        ZDefault=0,
+        Foreground1=1,
+        Foreground2=2
+    };
+
+    int   z_mode;//!< Mode of displaying of BGO
+    qreal z_offset; //Offset of Z-value from default
+
     //editing
     long smbx64_sp;
+    long smbx64_sp_apply; // Used only in save file process
     unsigned int array_id;
     unsigned int index;
+
 };
 
 struct LevelNPC
@@ -94,6 +112,7 @@ struct LevelNPC
     int direct;
     unsigned long id;
     long special_data;
+    long special_data2;
     bool generator;
     int generator_direct;
     int generator_type;
@@ -112,6 +131,7 @@ struct LevelNPC
     //editing
     unsigned int array_id;
     unsigned int index;
+    bool is_star;
 };
 
 struct LevelDoors
@@ -136,7 +156,7 @@ struct LevelDoors
     int stars;
     QString layer;
     bool unknown;
-    bool noyoshi;
+    bool novehicles;
     bool allownpc;
     bool locked;
 
@@ -145,7 +165,7 @@ struct LevelDoors
     unsigned int index;
 };
 
-struct LevelWater
+struct LevelPhysEnv
 {
     long x;
     long y;
@@ -164,6 +184,7 @@ struct LevelLayers
 {
     QString name;
     bool hidden;
+    bool locked;
 
     //editing
     unsigned int array_id;
@@ -194,6 +215,7 @@ struct LevelEvents
     long end_game;
     QVector<LevelEvents_layers > layers;
 
+    bool nosmoke;
     QStringList layers_hide;
     QStringList layers_show;
     QStringList layers_toggle;
@@ -201,18 +223,21 @@ struct LevelEvents
     QVector<LevelEvents_Sets > sets;
     QString trigger;
     long trigger_timer;
-    bool nosmoke;
-    bool altjump;
-    bool altrun;
-    bool down;
-    bool drop;
-    bool jump;
-    bool left;
-    bool right;
-    bool run;
-    bool start;
-    bool up;
+
+    bool ctrl_up;
+    bool ctrl_down;
+    bool ctrl_left;
+    bool ctrl_right;
+    bool ctrl_jump;
+    bool ctrl_altjump;
+    bool ctrl_run;
+    bool ctrl_altrun;
+
+    bool ctrl_start;
+    bool ctrl_drop;
+
     bool autostart;
+
     QString movelayer;
     float layer_speed_x;
     float layer_speed_y;
@@ -240,17 +265,22 @@ struct LevelData
     unsigned int npc_array_id;   //latest array_id
     QVector<LevelDoors > doors;            //Warps and Doors
     unsigned int doors_array_id;   //latest array_id
-    QVector<LevelWater > water;            //Water ranges
-    unsigned int water_array_id;   //latest array_id
+    QVector<LevelPhysEnv > physez;            //Physical Environment zones
+    unsigned int physenv_array_id;   //latest array_id
     QVector<LevelLayers > layers;          //Layers
     unsigned int layers_array_id;   //latest array_id
     QVector<LevelEvents > events;          //Events
     unsigned int events_array_id;   //latest array_id
 
+    //meta:
+    MetaData metaData;
+
     //editing:
     int CurSection;
     bool playmusic;
     bool modified;
+    bool untitled;
+    bool smbx64strict;
     QString filename;
     QString path;
 };

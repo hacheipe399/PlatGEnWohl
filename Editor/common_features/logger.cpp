@@ -22,7 +22,12 @@
 #include <QSettings>
 #include <QDebug>
 
+#include "app_path.h"
+
 #include "logger_sets.h"
+#include "../dev_console/devconsole.h"
+
+
 
 QString     LogWriter::DebugLogFile;
 QtMsgType   LogWriter::logLevel;
@@ -30,17 +35,17 @@ bool        LogWriter::enabled;
 
 void LogWriter::LoadLogSettings()
 {
-    DebugLogFile="PGE_debug_log.txt";
+    DebugLogFile="PGE_Editor_log.txt";
     logLevel = QtDebugMsg;
 
-    QString mainIniFile = QApplication::applicationDirPath() + "/" + "pge_editor.ini";
+    QString mainIniFile = ApplicationPath + "/" + "pge_editor.ini";
     QSettings logSettings(mainIniFile, QSettings::IniFormat);
 
 
     logSettings.beginGroup("logging");
-        DebugLogFile = logSettings.value("log-path", QApplication::applicationDirPath()+"/PGE_debug_log.txt").toString();
+        DebugLogFile = logSettings.value("log-path", ApplicationPath+"/"+DebugLogFile).toString();
         enabled = true;
-        switch( logSettings.value("log-level", "4").toInt() )
+        switch( logSettings.value("log-level", "3").toInt() )
         {
             case 4:
                 logLevel=QtDebugMsg; break;
@@ -97,6 +102,7 @@ QFile outFile(DebugLogFile);
 outFile.open(QIODevice::WriteOnly | QIODevice::Append);
 QTextStream ts(&outFile);
 ts << txt << endl;
+outFile.close();
 }
 
 
@@ -108,4 +114,25 @@ void LoadLogSettings()
 void WriteToLog(QtMsgType type, QString msg)
 {
     LogWriter::WriteToLog(type, msg);
+
+    if(!DevConsole::isConsoleShown())
+        return;
+
+    switch (type) {
+    case QtDebugMsg:
+        DevConsole::log(msg, QString("Debug"));
+        break;
+    case QtWarningMsg:
+        DevConsole::log(msg, QString("Warning"));
+        break;
+    case QtCriticalMsg:
+        DevConsole::log(msg, QString("Critical"));
+        break;
+    case QtFatalMsg:
+        DevConsole::log(msg, QString("Fatal"));
+        break;
+    default:
+        DevConsole::log(msg);
+        break;
+    }
 }

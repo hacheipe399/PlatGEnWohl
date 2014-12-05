@@ -16,93 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../ui_mainwindow.h"
+#include <ui_mainwindow.h>
 #include "../mainwindow.h"
 #include "music_player.h"
+#include "../common_features/mainwinconnect.h"
 
-QMediaPlaylist GlobalMusicPlayer::CurrentMusic;
+#include "../common_features/sdl_music_player.h"
 
+QString LvlMusPlay::currentCustomMusic;
+long LvlMusPlay::currentMusicId=0;
+long LvlMusPlay::currentWldMusicId=0;
+long LvlMusPlay::currentSpcMusicId=0;
+bool LvlMusPlay::musicButtonChecked;
+bool LvlMusPlay::musicForceReset=false;
+int LvlMusPlay::musicType=LvlMusPlay::LevelMusic;
 
-void MainWindow::on_LVLPropsMusicNumber_currentIndexChanged(int index)
-{
-    unsigned int test = index;
-    if(ui->LVLPropsMusicNumber->hasFocus())
-    {
-        ui->LVLPropsMusicCustomEn->setChecked(  test == configs.music_custom_id );
-    }
-
-    if(activeChildWindow()==1)
-    {
-        activeLvlEditWin()->LvlData.sections[activeLvlEditWin()->LvlData.CurSection].music_id = ui->LVLPropsMusicNumber->currentIndex();
-        if(ui->LVLPropsMusicNumber->hasFocus()) activeLvlEditWin()->LvlData.modified = true;
-    }
-
-    WriteToLog(QtDebugMsg, "Call to Set Music if playing");
-    setMusic(ui->actionPlayMusic->isChecked());
-}
-
-void MainWindow::on_LVLPropsMusicCustomEn_toggled(bool checked)
-{
-    if(ui->LVLPropsMusicCustomEn->hasFocus())
-    {
-        if(checked)
-        {
-            ui->LVLPropsMusicNumber->setCurrentIndex( configs.music_custom_id );
-            if(activeChildWindow()==1)
-            {
-                activeLvlEditWin()->LvlData.sections[activeLvlEditWin()->LvlData.CurSection].music_id = ui->LVLPropsMusicNumber->currentIndex();
-                activeLvlEditWin()->LvlData.modified = true;
-            }
-        }
-    }
-}
-
-void MainWindow::on_LVLPropsMusicCustomBrowse_clicked()
-{
-    QString dirPath;
-    if(activeChildWindow()==1)
-    {
-        dirPath = activeLvlEditWin()->LvlData.path;
-    }
-    else return;
-
-    MusicFileList musicList(dirPath);
-    if( musicList.exec() == QDialog::Accepted )
-    {
-        ui->LVLPropsMusicCustom->setText(musicList.SelectedFile);
-    }
-
-}
 
 void MainWindow::on_actionPlayMusic_triggered(bool checked)
 {
     WriteToLog(QtDebugMsg, "Clicked play music button");
     LvlMusPlay::currentCustomMusic = ui->LVLPropsMusicCustom->text();
-    LvlMusPlay::currentMusicId = ui->LVLPropsMusicNumber->currentIndex();
+    LvlMusPlay::currentMusicId = ui->LVLPropsMusicNumber->currentData().toInt();
     setMusic(checked);
 }
 
 
-void MainWindow::on_LVLPropsMusicCustom_textChanged(const QString &arg1)
-{
-    if(activeChildWindow()==1)
-    {
-        activeLvlEditWin()->LvlData.sections[activeLvlEditWin()->LvlData.CurSection].music_file = arg1.simplified().remove('\"');
-    }
-
-    setMusic( ui->actionPlayMusic->isChecked() );
-}
-
-
-
-
-void MainWindow::setMusic(bool checked)
+void MainWindow::setMusic(bool checked=false)
 {
     QString dirPath;
     QString musicFile;
     QString musicFilePath;
-    bool silent;
+    bool silent = true;
     unsigned int CurMusNum;
+    checked = ui->actionPlayMusic->isChecked();
 
     if( configs.check() )
     {
@@ -112,17 +58,28 @@ void MainWindow::setMusic(bool checked)
 
     if(!LvlMusPlay::musicForceReset)
     {
-    if( ( LvlMusPlay::currentMusicId == ui->LVLPropsMusicNumber->currentIndex() ) &&
-            (LvlMusPlay::currentCustomMusic == ui->LVLPropsMusicCustom->text()) &&
-            (LvlMusPlay::musicButtonChecked == ui->actionPlayMusic->isChecked()) ) return;
+        if(LvlMusPlay::musicType==LvlMusPlay::LevelMusic)
+        {
+            if( ( LvlMusPlay::currentMusicId == ui->LVLPropsMusicNumber->currentData().toInt() ) &&
+                    (LvlMusPlay::currentCustomMusic == ui->LVLPropsMusicCustom->text()) &&
+                    (LvlMusPlay::musicButtonChecked == ui->actionPlayMusic->isChecked()) ) return;
+        }
+        else
+        if(LvlMusPlay::musicType==LvlMusPlay::WorldMusic)
+        {
+            if(activeChildWindow()==3)
+            {
+                if((LvlMusPlay::currentWldMusicId == activeWldEditWin()->currentMusic)&&
+                   (LvlMusPlay::musicButtonChecked == ui->actionPlayMusic->isChecked()))
+                    return;
+            }
+
+        }
+
     } else LvlMusPlay::musicForceReset=false;
 
 
-    WriteToLog(QtDebugMsg, "-> New MediaPlayList");
-    GlobalMusicPlayer::CurrentMusic.clear();
-
-
-    if(activeChildWindow()!=1)
+    if((LvlMusPlay::musicType==LvlMusPlay::LevelMusic)&&(activeChildWindow()!=1))
     {
         if(checked)
         {
@@ -137,7 +94,8 @@ void MainWindow::setMusic(bool checked)
                      )
               )
             {
-                MusicPlayer->play();
+                //MusicPlayer->play();
+                PGE_MusPlayer::MUS_playMusic();
                 silent=false;
             }
             else
@@ -148,7 +106,40 @@ void MainWindow::setMusic(bool checked)
         else
         {
             WriteToLog(QtDebugMsg, QString("Set music player -> Stop by Checked"));
-                MusicPlayer->stop();
+            PGE_MusPlayer::MUS_stopMusic();
+            silent=true;
+        }
+        return;
+    }
+
+    if((LvlMusPlay::musicType==LvlMusPlay::WorldMusic)&&(activeChildWindow()!=3))
+    {
+        if(checked)
+        {
+            if(
+                    (
+                        (LvlMusPlay::currentWldMusicId>0)&&
+                        (((unsigned long)LvlMusPlay::currentWldMusicId!=configs.music_w_custom_id))
+                    )||
+                     (
+                         ((unsigned long)LvlMusPlay::currentWldMusicId == configs.music_w_custom_id)
+                         &&(LvlMusPlay::currentCustomMusic!="")
+                     )
+              )
+            {
+                //MusicPlayer->play();
+                PGE_MusPlayer::MUS_playMusic();
+                silent=false;
+            }
+            else
+            {
+                silent=true;
+            }
+        }
+        else
+        {
+            WriteToLog(QtDebugMsg, QString("Set music player -> Stop by Checked"));
+            PGE_MusPlayer::MUS_stopMusic();
             silent=true;
         }
         return;
@@ -160,71 +151,127 @@ void MainWindow::setMusic(bool checked)
         dirPath = activeLvlEditWin()->LvlData.path;
     }
     else
+    if(activeChildWindow()==3)
+    {
+        WriteToLog(QtDebugMsg, "Get World File Path");
+        dirPath = activeWldEditWin()->WldData.path;
+    }
+    else
         return;
 
     WriteToLog(QtDebugMsg, "Check for Sielent");
 
-    if((ui->LVLPropsMusicNumber->currentIndex() <= 0) // Music is sielent
-            ||
-       //Mute, if music ID not exist
-      (ui->LVLPropsMusicNumber->currentIndex()-1 > configs.main_music_lvl.size() ))
-        silent=true;
+    if(LvlMusPlay::musicType==LvlMusPlay::LevelMusic)
+    {
+        silent = ((ui->LVLPropsMusicNumber->currentData().toInt() <= 0) // Music is sielent
+                ||
+           //Mute, if music ID not exist
+          (ui->LVLPropsMusicNumber->currentData().toInt() > configs.main_music_lvl.size() ));
+    }
     else
-        silent=false;
+    if(LvlMusPlay::musicType==LvlMusPlay::WorldMusic)
+    {
+        if(activeChildWindow()==3)
+        {
+            silent = ( activeWldEditWin()->currentMusic <=0 );
+        }
+    }
+    else
+        silent=true;
+
 
     WriteToLog(QtDebugMsg, "ifNot Sielent, play Music");
 
     if(!silent)
     {
-        CurMusNum = ui->LVLPropsMusicNumber->currentIndex()-1;
-
-        if(CurMusNum==configs.music_custom_id-1)
+        if(LvlMusPlay::musicType==LvlMusPlay::LevelMusic)
         {
-                WriteToLog(QtDebugMsg, QString("get Custom music path"));
-            musicFile = ui->LVLPropsMusicCustom->text();
-            musicFilePath = dirPath + "/" + musicFile;
+            CurMusNum = ui->LVLPropsMusicNumber->currentData().toInt();
         }
         else
         {
-                WriteToLog(QtDebugMsg, QString("get standart music path"));
-            musicFile = configs.main_music_lvl[CurMusNum].file;
+            CurMusNum = (activeChildWindow()==3) ? activeWldEditWin()->currentMusic : 0;
+        }
+
+        musicFile="";
+
+        if(LvlMusPlay::musicType==LvlMusPlay::LevelMusic)
+        {
+            if(CurMusNum==configs.music_custom_id)
+            {
+                    WriteToLog(QtDebugMsg, QString("get Custom music path"));
+                musicFile = ui->LVLPropsMusicCustom->text();
+                musicFilePath = dirPath + "/" + musicFile;
+            }
+            else
+            {
+                    WriteToLog(QtDebugMsg, QString("get standart music path"));
+                foreach(obj_music mus, configs.main_music_lvl)
+                {
+                    if(CurMusNum==mus.id)
+                    {
+                        musicFile = mus.file;
+                        break;
+                    }
+                }
+                dirPath = configs.dirs.music;
+                musicFilePath = configs.dirs.music + musicFile;
+                //QMessageBox::information(this, "test", "music is \n"+musicFile+"\n"+QString::number());
+            }
+        }
+        if(LvlMusPlay::musicType==LvlMusPlay::WorldMusic)
+        {
+            foreach(obj_music mus, configs.main_music_wld)
+            {
+                if(CurMusNum==mus.id)
+                {
+                    musicFile = mus.file;
+                    break;
+                }
+            }
             dirPath = configs.dirs.music;
             musicFilePath = configs.dirs.music + musicFile;
-            //QMessageBox::information(this, "test", "music is \n"+musicFile+"\n"+QString::number());
         }
+
+
+
 
         if(checked)
         {
             if( (QFile::exists(musicFilePath)) && (QFileInfo(musicFilePath)).isFile() )
             {
-                WriteToLog(QtDebugMsg, QString("Set music player -> addMedia"));
-                GlobalMusicPlayer::CurrentMusic.addMedia(QUrl::fromLocalFile( musicFilePath ));
-                GlobalMusicPlayer::CurrentMusic.setPlaybackMode(QMediaPlaylist::Loop);
-                WriteToLog(QtDebugMsg, QString("Set music player -> stop Current"));
-                MusicPlayer->stop();
-                WriteToLog(QtDebugMsg, QString("Set music player -> set PlayList"));
-                MusicPlayer->setPlaylist(&(GlobalMusicPlayer::CurrentMusic));
+                PGE_MusPlayer::MUS_stopMusic();
+                WriteToLog(QtDebugMsg, QString("Set music player -> set MusicFile"));
+                PGE_MusPlayer::MUS_openFile( musicFilePath );
                 WriteToLog(QtDebugMsg, QString("Set music player -> setVolme and play"));
-                MusicPlayer->setVolume(75);
-                MusicPlayer->play();
+                PGE_MusPlayer::MUS_changeVolume(muVol->value());
+                PGE_MusPlayer::MUS_playMusic();
             }
             else
-                MusicPlayer->stop();
+                PGE_MusPlayer::MUS_stopMusic();
         }
         else
         {
             WriteToLog(QtDebugMsg, QString("Set music player -> Stop by checker"));
-            MusicPlayer->stop();
+            PGE_MusPlayer::MUS_stopMusic();
         }
     }
     else
     {
         WriteToLog(QtDebugMsg, QString("Set music player -> Stop by sielent"));
-        MusicPlayer->stop();
+        PGE_MusPlayer::MUS_stopMusic();
     }
 
-    LvlMusPlay::currentCustomMusic = ui->LVLPropsMusicCustom->text();
-    LvlMusPlay::currentMusicId = ui->LVLPropsMusicNumber->currentIndex();
+    if(LvlMusPlay::musicType==LvlMusPlay::LevelMusic)
+    {
+        LvlMusPlay::currentCustomMusic = ui->LVLPropsMusicCustom->text();
+        LvlMusPlay::currentMusicId = ui->LVLPropsMusicNumber->currentData().toInt();
+    }
+    else
+    if(LvlMusPlay::musicType==LvlMusPlay::WorldMusic)
+    {
+        LvlMusPlay::currentWldMusicId = (activeChildWindow()==3) ? activeWldEditWin()->currentMusic : 0;
+    }
     LvlMusPlay::musicButtonChecked  = ui->actionPlayMusic->isChecked();
 }
 

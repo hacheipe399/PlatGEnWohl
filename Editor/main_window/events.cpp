@@ -16,9 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../ui_mainwindow.h"
+#include <ui_mainwindow.h>
 #include "../mainwindow.h"
-
 
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *e)
@@ -35,23 +34,24 @@ void MainWindow::dropEvent(QDropEvent *e)
 
     foreach (const QUrl &url, e->mimeData()->urls()) {
         const QString &fileName = url.toLocalFile();
+
         //qDebug() << "Dropped file:" << fileName;
         OpenFile(fileName);
     }
+
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     ui->centralWidget->closeAllSubWindows();
 
-
     if (ui->centralWidget->currentSubWindow()) {
         event->ignore();
-
     }
     else
     {
         saveSettings();
-    event->accept();
+        closeEditor();
+        event->accept();
     }
 }

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lvlscene.h"
-#include "../edit_level/leveledit.h"
+#include "lvl_scene.h"
+#include "../edit_level/level_edit.h"
 
 #include "item_block.h"
 #include "item_bgo.h"
@@ -45,7 +45,6 @@ LevelData LvlScene::copy(bool cut)
                 copyData.blocks.push_back(sourceBlock->blockData);
                 if(cut){
                     sourceBlock->removeFromArray();
-                    removeItem(*it);
                     delete (*it);
                 }
             }
@@ -56,7 +55,6 @@ LevelData LvlScene::copy(bool cut)
                 copyData.bgo.push_back(sourceBGO->bgoData);
                 if(cut){
                     sourceBGO->removeFromArray();
-                    removeItem(*it);
                     delete (*it);
                 }
             }
@@ -67,7 +65,6 @@ LevelData LvlScene::copy(bool cut)
                 copyData.npc.push_back(sourceNPC->npcData);
                 if(cut){
                     sourceNPC->removeFromArray();
-                    removeItem(*it);
                     delete (*it);
                 }
             }
@@ -75,10 +72,9 @@ LevelData LvlScene::copy(bool cut)
             if( ObjType == "Water")
             {
                 ItemWater* sourceWater = (ItemWater *)(*it);
-                copyData.water.push_back(sourceWater->waterData);
+                copyData.physez.push_back(sourceWater->waterData);
                 if(cut){
                     sourceWater->removeFromArray();
-                    removeItem(*it);
                     delete (*it);
                 }
             }
@@ -89,6 +85,7 @@ LevelData LvlScene::copy(bool cut)
         {
             LvlData->modified = true;
             addRemoveHistory(copyData);
+            Debugger_updateItemList();
         }
     }
 
@@ -109,9 +106,9 @@ void LvlScene::paste(LevelData BufferIn, QPoint pos)
     }else if(!BufferIn.npc.isEmpty()){
         baseX = BufferIn.npc[0].x;
         baseY = BufferIn.npc[0].y;
-    }else if(!BufferIn.water.isEmpty()){
-        baseX = BufferIn.water[0].x;
-        baseY = BufferIn.water[0].y;
+    }else if(!BufferIn.physez.isEmpty()){
+        baseX = BufferIn.physez[0].x;
+        baseY = BufferIn.physez[0].y;
     }else{
         //nothing to paste
         return;
@@ -141,7 +138,7 @@ void LvlScene::paste(LevelData BufferIn, QPoint pos)
             baseY = npc.y;
         }
     }
-    foreach (LevelWater water, BufferIn.water){
+    foreach (LevelPhysEnv water, BufferIn.physez){
         if(water.x<baseX){
             baseX = water.x;
         }
@@ -158,7 +155,7 @@ void LvlScene::paste(LevelData BufferIn, QPoint pos)
         LvlData->blocks_array_id++;
         dumpBlock.array_id = LvlData->blocks_array_id;
 
-        placeBlock(dumpBlock, true);
+        placeBlock(dumpBlock);
 
         LvlData->blocks.push_back(dumpBlock);
         newData.blocks.push_back(dumpBlock);
@@ -171,7 +168,7 @@ void LvlScene::paste(LevelData BufferIn, QPoint pos)
         LvlData->bgo_array_id++;
         dumpBGO.array_id = LvlData->bgo_array_id;
 
-        placeBGO(dumpBGO, true);
+        placeBGO(dumpBGO);
 
         LvlData->bgo.push_back(dumpBGO);
 
@@ -185,27 +182,29 @@ void LvlScene::paste(LevelData BufferIn, QPoint pos)
         dumpNPC.y = (long)pos.y() + npc.y - baseY;
         LvlData->npc_array_id++;
         dumpNPC.array_id = LvlData->npc_array_id;
-        placeNPC(dumpNPC, true);
+        placeNPC(dumpNPC);
         LvlData->npc.push_back(dumpNPC);
         newData.npc.push_back(dumpNPC);
     }
-    foreach (LevelWater water, BufferIn.water){
+    foreach (LevelPhysEnv water, BufferIn.physez){
         //Gen Copy of Water
-        LevelWater dumpWater = water;
+        LevelPhysEnv dumpWater = water;
         dumpWater.x = (long)pos.x() + water.x - baseX;
         dumpWater.y = (long)pos.y() + water.y - baseY;
         LvlData->npc_array_id++;
         dumpWater.array_id = LvlData->npc_array_id;
-        placeWater(dumpWater, true);
-        LvlData->water.push_back(dumpWater);
-        newData.water.push_back(dumpWater);
+        placeWater(dumpWater);
+        LvlData->physez.push_back(dumpWater);
+        newData.physez.push_back(dumpWater);
     }
+
+    applyGroupGrid(selectedItems(), true);
 
     LvlData->modified = true;
     addPlaceHistory(newData);
 
     //refresh Animation control
-    if(opts.animationEnabled) stopAnimation();
-    if(opts.animationEnabled) startBlockAnimation();
+    //if(opts.animationEnabled) stopAnimation();
+    //if(opts.animationEnabled) startBlockAnimation();
 
 }

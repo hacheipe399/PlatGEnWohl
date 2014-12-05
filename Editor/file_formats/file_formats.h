@@ -22,6 +22,12 @@
 #include <QRegExp>
 #include <QString>
 #include <QFile>
+#include <QTextStream>
+#include <QTextCodec>
+#ifndef PGE_ENGINE
+#include <QMessageBox>
+#endif
+
 
 
 #include "lvl_filedata.h"
@@ -46,41 +52,145 @@ public:
     static bool wBool(QString in); //Worded BOOL
     static bool dBool(QString in); //Worded BOOL
 
+    //Convert from string to internal data
+    static bool wBoolR(QString in);
+
     //SMBX64 parameter string generators
     static QString IntS(long input);
     static QString BoolS(bool input);
     static QString qStrS(QString input);
+    static QString FloatS(float input);
+    static QString qStrS_multiline(QString input);
+};
+
+class PGEFile
+{
+public:
+    PGEFile() {}
+
+    // /////////////Validators///////////////
+    //returns TRUE on valid data
+    static bool IsQStr(QString in);// QUOTED STRING
+    static bool IsHex(QString in);// Hex Encoded String
+    static bool IsIntU(QString in);// UNSIGNED INT
+    static bool IsIntS(QString in);// SIGNED INT
+    static bool IsFloat(QString in);// FLOAT
+    static bool IsBool(QString in);//BOOL
+    static bool IsBoolArray(QString in);//Boolean array
+    static bool IsIntArray(QString in);//Integer array
+    static bool IsStringArray(QString in);//String array
+
+    //Split string into data values
+    static QList<QStringList> splitDataLine(QString src_data, bool *valid = 0);
+
+    //PGE Extended File parameter string generators
+    static QString IntS(long input);
+    static QString BoolS(bool input);
+    static QString FloatS(double input);
+    static QString qStrS(QString input);
+    static QString hStrS(QString input);
+    static QString strArrayS(QStringList input);
+    static QString intArrayS(QList<int > input);
+    static QString BoolArrayS(QList<bool > input);
+
+    static QString X2STR(QString input);
+    static QStringList X2STRArr(QString src);
+    static QList<bool> X2BollArr(QString src);
+
+    static QString escapeStr(QString input);
+    static QString restoreStr(QString input);
+    static QString encodeEscape(QString input);
+    static QString decodeEscape(QString input);
+
+    static QString value(QString marker, QString data);
+
+};
+
+
+class FileStringList
+{
+public:
+    FileStringList();
+
+    FileStringList(QString fileData);
+    ~FileStringList();
+
+    void addData(QString fileData);
+    QString readLine();
+    bool isEOF();
+    bool atEnd();
+private:
+    QStringList buffer;
+    long lineID;
 };
 
 
 class FileFormats
 {
 public:
-    //File format read functions
+    //File format read/write functions
+
+
+    static MetaData ReadNonSMBX64MetaData(QString RawData, QString filePath="");
+    static QString WriteNonSMBX64MetaData(MetaData metaData);
+
+    /******************************Level files***********************************/
+    static LevelData OpenLevelFile(QString filePath); //!< Open supported level file via direct path
+
+    static LevelData ReadLevelFile(QFile &inf); //!< Parse SMBX64 Level file by file stream
+    static LevelData ReadExtendedLevelFile(QFile &inf); //!< Parse PGE-X level file by file stream
+    static LevelData dummyLvlDataArray(); //!< Generate empty level map
+
     // SMBX64 LVL File
-    static LevelData ReadLevelFile(QFile &inf);             //read
-    static QString WriteSMBX64LvlFile(LevelData FileData);  //write
-    static LevelData dummyLvlDataArray();                   //Create new
+    static LevelData ReadSMBX64LvlFile(QString RawData, QString filePath=""); //!< Parse SMBX1-SMBX64 level
+    static QString WriteSMBX64LvlFile(LevelData FileData);  //!< Generate SMBX64 level raw data
+
+    // PGE Extended Level File
+    static LevelData ReadExtendedLvlFile(QString RawData, QString filePath=""); //!< Parse PGE-X level file
+    static QString WriteExtendedLvlFile(LevelData FileData);  //!< Generate PGE-X level raw data
 
     // Lvl Data
     static LevelNPC dummyLvlNpc();
     static LevelDoors dummyLvlDoor();
     static LevelBlock dummyLvlBlock();
     static LevelBGO dummyLvlBgo();
-    static LevelWater dummyLvlWater();
+    static LevelPhysEnv dummyLvlPhysEnv();
+    static LevelLayers dummyLvlLayer();
     static LevelEvents dummyLvlEvent();
+    static PlayerPoint dummyLvlPlayerPoint(int id=0);
     static LevelSection dummyLvlSection();
 
+
+    /******************************World file***********************************/
+    static WorldData OpenWorldFile(QString filePath);
+
+    static WorldData ReadWorldFile(QFile &inf); //!< Parse SMBX64 World file by file stream
+    static WorldData ReadExtendedWorldFile(QFile &inf); //!< Parse PGE-X World file by file stream
+    static WorldData dummyWldDataArray(); //!< Generate empty world map
+
+    // SMBX64 WLD File
+    static WorldData ReadSMBX64WldFile(QString RawData, QString filePath); //!< Parse SMBX1-SMBX64 world
+    static QString WriteSMBX64WldFile(WorldData FileData);  //!< Generate SMBX64 world raw data
+
+    // PGE Extended World map File
+    static WorldData ReadExtendedWldFile(QString RawData, QString filePath); //!< Parse PGE-X world file
+    static QString WriteExtendedWldFile(WorldData FileData);  //!< Generate PGE-X world raw data
+
+    //Wld Data
+    static WorldTiles dummyWldTile();
+    static WorldScenery dummyWldScen();
+    static WorldPaths dummyWldPath();
+    static WorldLevels dummyWldLevel();
+    static WorldMusic dummyWldMusic();
+
+
+    /******************************NPC.txt file***********************************/
     // SMBX64 NPC.TXT File
     static NPCConfigFile ReadNpcTXTFile(QFile &inf, bool IgnoreBad=false); //read
     static QString WriteNPCTxtFile(NPCConfigFile FileData);                //write
 
     static NPCConfigFile CreateEmpytNpcTXTArray();
     static obj_npc mergeNPCConfigs(obj_npc &global, NPCConfigFile &local, QSize captured=QSize(0,0));
-
-    // SMBX64 WLD File
-    static WorldData ReadWorldFile(QFile &inf); //read
-
 
 
     //common

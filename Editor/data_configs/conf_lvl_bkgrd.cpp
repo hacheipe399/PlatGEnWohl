@@ -16,11 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../common_features/app_path.h"
+
 #include "data_configs.h"
 
 #include "../main_window/global_settings.h"
 
-void dataconfigs::loadLevelBackgrounds()
+long dataconfigs::getBgI(unsigned long itemID)
+{
+    long j;
+    bool found=false;
+
+    for(j=0; j < main_bg.size(); j++)
+    {
+        if(main_bg[j].id==itemID)
+        {
+            found=true;
+            break;
+        }
+    }
+
+    if(!found) j=-1;
+    return j;
+}
+
+void dataconfigs::loadLevelBackgrounds(QProgressDialog *prgs)
 {
     unsigned int i;
     obj_BG sbg;
@@ -30,7 +50,7 @@ void dataconfigs::loadLevelBackgrounds()
 
     if(!QFile::exists(bg_ini))
     {
-        WriteToLog(QtCriticalMsg, QString("ERROR LOADING OF lvl_bkgrd.ini: file not exist"));
+        addError(QString("ERROR LOADING lvl_bkgrd.ini: file does not exist"), QtCriticalMsg);
           return;
     }
 
@@ -44,12 +64,32 @@ void dataconfigs::loadLevelBackgrounds()
         total_data +=bg_total;
     bgset.endGroup();
 
+    if(prgs) prgs->setMaximum(bg_total);
+    if(prgs) prgs->setLabelText(QApplication::tr("Loading Backgrounds..."));
+
     ConfStatus::total_bg = bg_total;
+
+    if(ConfStatus::total_bg==0)
+    {
+        addError(QString("ERROR LOADING lvl_bkgrd.ini: number of items not define, or empty config"), QtCriticalMsg);
+        return;
+    }
 
     for(i=1; i<=bg_total; i++)
     {
+        qApp->processEvents();
+        if(prgs)
+        {
+            if(!prgs->wasCanceled()) prgs->setValue(i);
+        }
+
         bgset.beginGroup( QString("background2-"+QString::number(i)) );
             sbg.name = bgset.value("name", "").toString();
+            if(sbg.name.isEmpty())
+            {
+                addError(QString("BG-%1 Item name isn't defined").arg(i));
+                goto skipBG;
+            }
             tmpstr = bgset.value("type", "single-row").toString();
                 if(tmpstr=="single-row")
                    sbg.type = 0;
@@ -79,10 +119,16 @@ void dataconfigs::loadLevelBackgrounds()
             if( (imgFile!="") )
             {
                 sbg.image = QPixmap(BGPath + imgFile);
+                if(sbg.image.isNull())
+                {
+                    addError(QString("BG-%1 Broken image file").arg(i));
+                    goto skipBG;
+                }
             }
             else
             {
-                sbg.image = QPixmap(QApplication::applicationDirPath() + "/" + "data/nobg.gif");
+                addError(QString("BG-%1 Image filename isn't defined").arg(i));
+                goto skipBG;
             }
 
             sbg.attached = (int)(bgset.value("attached", "bottom").toString()=="top");
@@ -95,6 +141,7 @@ void dataconfigs::loadLevelBackgrounds()
 
             sbg.animated = (bgset.value("animated", "0").toString()=="1");//animated
             sbg.frames = bgset.value("frames", "1").toInt();
+            sbg.display_frame = bgset.value("display-frame", "0").toInt();
             //frames
 
             if(sbg.type==1)
@@ -108,7 +155,7 @@ void dataconfigs::loadLevelBackgrounds()
                     }
                     else
                     {
-                        sbg.second_image = QPixmap(QApplication::applicationDirPath() + "/" + "data/nobg.gif");
+                        sbg.second_image = QPixmap(ApplicationPath + "/" + "data/nobg.gif");
                     }
                     sbg.second_repeat_h = bgset.value("second-repeat-h", "2").toInt();
                     tmpstr = bgset.value("second-repeat-v", "NR").toString();
@@ -137,12 +184,14 @@ void dataconfigs::loadLevelBackgrounds()
             }
             sbg.id = i;
             main_bg.push_back(sbg);
+
+        skipBG:
         bgset.endGroup();
 
 
         if( bgset.status() != QSettings::NoError )
         {
-            WriteToLog(QtCriticalMsg, QString("ERROR LOADING OF lvl_bgrnd.ini N:%1 (background2-%2)").arg(bgset.status()).arg(i));
+            addError(QString("ERROR LOADING lvl_bgrnd.ini N:%1 (background2-%2)").arg(bgset.status()).arg(i), QtCriticalMsg);
         }
     }
 

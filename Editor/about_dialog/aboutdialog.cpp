@@ -17,13 +17,20 @@
  */
 
 #include "aboutdialog.h"
-#include "ui_aboutdialog.h"
+#include <ui_aboutdialog.h>
+#include "../version.h"
 
 aboutDialog::aboutDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::aboutDialog)
 {
     ui->setupUi(this);
+    ui->About1->setText(ui->About1->text()
+                        .arg(_FILE_VERSION)
+                        .arg(_FILE_RELEASE)
+                        .arg(QString("Build date: <u>%2</u>")
+                             .arg(_DATE_OF_BUILD))
+                        );
 }
 
 aboutDialog::~aboutDialog()

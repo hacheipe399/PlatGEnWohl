@@ -19,12 +19,21 @@
 #ifndef WLD_FILEDATA_H
 #define WLD_FILEDATA_H
 
+#include <QString>
+#include <QVector>
+
+#include "meta_filedata.h"
+
 //////////////////////World file Data//////////////////////
 struct WorldTiles
 {
     long x;
     long y;
     unsigned long id;
+
+    //editing
+    unsigned int array_id;
+    unsigned int index;
 };
 
 struct WorldScenery
@@ -32,6 +41,10 @@ struct WorldScenery
     long x;
     long y;
     unsigned long id;
+
+    //editing
+    unsigned int array_id;
+    unsigned int index;
 };
 
 struct WorldPaths
@@ -39,6 +52,10 @@ struct WorldPaths
     long x;
     long y;
     unsigned long id;
+
+    //editing
+    unsigned int array_id;
+    unsigned int index;
 };
 
 struct WorldLevels
@@ -59,6 +76,10 @@ struct WorldLevels
     long gotox;
     long gotoy;
     bool bigpathbg;
+
+    //editing
+    unsigned int array_id;
+    unsigned int index;
 };
 
 struct WorldMusic
@@ -66,22 +87,33 @@ struct WorldMusic
     long x;
     long y;
     unsigned long id;
+    QString music_file;
+
+    //editing
+    unsigned int array_id;
+    unsigned int index;
 };
 
 struct WorldData
 {
     bool ReadFileValid;
+
     QString EpisodeTitle;
     bool nocharacter1;
     bool nocharacter2;
     bool nocharacter3;
     bool nocharacter4;
     bool nocharacter5;
-    QString autolevel;
-    bool noworldmap;
+
+    QList<bool > nocharacter;
+
+    QString IntroLevel_file;
+    bool HubStyledWorld;
     bool restartlevel;
+
     unsigned int stars;
 
+    QString authors;
     QString author1;
     QString author2;
     QString author3;
@@ -89,10 +121,28 @@ struct WorldData
     QString author5;
 
     QVector<WorldTiles > tiles;
+    unsigned int tile_array_id;
     QVector<WorldScenery > scenery;
+    unsigned int scene_array_id;
     QVector<WorldPaths > paths;
+    unsigned int path_array_id;
     QVector<WorldLevels > levels;
+    unsigned int level_array_id;
     QVector<WorldMusic > music;
+    unsigned int musicbox_array_id;
+
+    //meta:
+    MetaData metaData;
+
+    //editing:
+    int CurSection;
+    bool playmusic;
+    int currentMusic;
+    bool modified;
+    bool untitled;
+    bool smbx64strict;
+    QString filename;
+    QString path;
 
 };
 

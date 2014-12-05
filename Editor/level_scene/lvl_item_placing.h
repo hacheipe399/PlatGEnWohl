@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ITEM_PLACING_H
-#define ITEM_PLACING_H
+#ifndef LVL_ITEM_PLACING_H
+#define LVL_ITEM_PLACING_H
 
 #include "../file_formats/lvl_filedata.h"
 class LvlPlacingItems
@@ -25,20 +25,44 @@ class LvlPlacingItems
 public:
     static LevelNPC npcSet;
     static long npcGrid;
+    static long npcGfxOffsetX1;
+    static long npcGfxOffsetX2;
+    static long npcGfxOffsetY;
+    static bool npcSpecialAutoIncrement;
+    static long npcSpecialAutoIncrement_begin;
+
+    static long itemW;
+    static long itemH;
+
     static LevelBlock blockSet;
 
+    enum PlaceMode
+    {
+        PMODE_Brush=0,
+        PMODE_Square,
+        PMODE_Line,
+        PMODE_FloodFill
+    };
+
+    static PlaceMode placingMode;
+    static bool overwriteMode;
+
     static bool sizableBlock;
-    static bool fillingMode;
+
+
 
     static LevelBGO bgoSet;
-    static long bgoW;
-    static long bgoH;
-    static LevelWater waterSet;
+    static LevelPhysEnv waterSet;
 
     enum doorType{
         DOOR_Entrance=0,
         DOOR_Exit
     };
+
+    static QString layer;
+
+    static int c_offset_x;
+    static int c_offset_y;
 
     static int doorType;
     static long doorArrayId;
@@ -49,6 +73,9 @@ public:
     static int gridSz;
     static QPoint gridOffset;
 
+    static QList<QPair<int, QVariant > > flags;
 };
+
+typedef QPair<int, QVariant > dataFlag;
 
 #endif // ITEM_PLACING_H

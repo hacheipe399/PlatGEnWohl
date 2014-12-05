@@ -32,7 +32,7 @@
 #include <math.h>
 #include <QMenu>
 
-#include "lvlscene.h"
+#include "lvl_scene.h"
 #include "../file_formats/lvl_filedata.h"
 
 class ItemWater : public QObject, public QGraphicsPolygonItem
@@ -43,8 +43,10 @@ public:
     ~ItemWater();
 
     void setSize(QSize sz);
+    void setRectSize(QRect rect);
+
     void setType(int tp);
-    void setWaterData(LevelWater inD);
+    void setWaterData(LevelPhysEnv inD);
 
     void setContextMenu(QMenu &menu);
     void setScenePoint(LvlScene *theScene);
@@ -64,7 +66,7 @@ public:
     void arrayApply();
     void removeFromArray();
 
-    LevelWater waterData;
+    LevelPhysEnv waterData;
 
     int gridSize;
     int gridOffsetX;
@@ -78,9 +80,12 @@ public:
     bool isLocked;
 
 protected:
+    bool mouseLeft;
+    bool mouseMid;
+    bool mouseRight;
     virtual void contextMenuEvent( QGraphicsSceneContextMenuEvent * event );
     virtual void mousePressEvent ( QGraphicsSceneMouseEvent * mouseEvent );
-    //virtual void mouseReleaseEvent( QGraphicsSceneMouseEvent * event);
+    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent * mouseEvent);
 
 private:
     LvlScene * scene;
