@@ -19,3 +19,4 @@ Project site: http://engine.wohlnet.ru
     
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+PD: I forked this accidentally. So sometimes it could be outdated...
